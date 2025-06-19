@@ -5,7 +5,6 @@ from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 import time
 import csv
-import threading
 
 
 def init_driver():
@@ -15,7 +14,8 @@ def init_driver():
     return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
 
-def extract_products(driver, seen):
+def extract_products(driver):
+    seen = set()
     products = []
 
     product_cards = driver.find_elements(By.CSS_SELECTOR, 'div[data-csa-c-item-type="asin"]')
@@ -63,32 +63,21 @@ def extract_products(driver, seen):
     return products
 
 
-def wait_for_enter(stop_flag):
-    input("\n[!] Press Enter at any time to stop scraping...\n")
-    stop_flag.append(True)
-
-
-def scrape_amazon_fresh_user_scroll(url, output_file="amazon_fresh_live_scroll.csv"):
+def scrape_amazon_fresh_manual(url, output_file="amazon_fresh_manual_scroll.csv"):
     driver = init_driver()
     driver.get(url)
-    time.sleep(5)  # Allow page to load
+    time.sleep(4)
 
-    print("[→] You can now scroll or click pages manually.")
-    print("[→] Scraping will continue until you press Enter.")
-
-    seen = set()
     all_products = []
-    stop_flag = []
 
-    # Start thread to wait for Enter
-    threading.Thread(target=wait_for_enter, args=(stop_flag,), daemon=True).start()
+    # Let the user scroll manually
+    print("[🟡] Please scroll through all products manually until you reach the end of the list.")
+    input("[🔽] Press Enter here **after you're done scrolling**...")
 
-    while not stop_flag:
-        new_products = extract_products(driver, seen)
-        if new_products:
-            print(f"[✓] Found {len(new_products)} new products.")
-            all_products.extend(new_products)
-        time.sleep(3)
+    # Now scrape all visible products
+    section_products = extract_products(driver)
+    all_products.extend(section_products)
+    print(f"[✓] Scraped {len(section_products)} products.")
 
     driver.quit()
 
@@ -102,6 +91,6 @@ def scrape_amazon_fresh_user_scroll(url, output_file="amazon_fresh_live_scroll.c
         print("[!] No products scraped.")
 
 
-# Run the scraper
+# Run the manual scroll scraper
 if __name__ == "__main__":
-    scrape_amazon_fresh_user_scroll("https://www.amazon.in/alm/category/fresh/Oils-Ghee?almBrandId=ctnow&node=4859491031&ref=fs_dsk_sn_fs-nav-fs-oilghe-f0af8")
+    scrape_amazon_fresh_manual("https://www.amazon.in/alm/category/fresh/Oils-Ghee?almBrandId=ctnow&node=4859491031&ref=fs_dsk_sn_fs-nav-fs-oilghe-f0af8")
